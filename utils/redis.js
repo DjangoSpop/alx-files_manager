@@ -1,49 +1,49 @@
+import { MongoClient } from 'mongodb';
 
+// Assuming you have a separate module for environment variables
+import { DB_HOST, DB_PORT, DB_DATABASE } from './config';  // Adjusted import
 
+class DBClient {
+  constructor() {
+    const host = DB_HOST || 'localhost'; // Use imported variables
+    const port = DB_PORT || 27017;
+    const database = DB_DATABASE || 'files_manager';
+    const uri = `mongodb://${host}:${port}/`;  // Construct the full URI
 
-class RedisClient{
-    constructor(){
-        this.client = redis.createClient();
-        this.client.on('error', (error)=>
-            console.error(`Redis client not connected to the server: ${error.message}`)
-        );
-    
-    }
-    isAlive(){
-        return this.client.connected;
-    }
-    async get(key){
-        return new Promise((resolve, reject) => {
-            this.client.get(key, (err, value) => {
-                if (err) reject(err);
-                resolve(value);
-            });
-        }
-        );
-    }
+    this.client = new MongoClient(uri, { useUnifiedTopology: true });
+    this.db = null; // Store database reference after connection
+  }
 
-    async setImmediate(key, value, duration){
-        return new Promise((resolve, reject) => {
-            this.client.setex(key, duration, value, (error, reply) => {
-                if (error){
-                    reject(error);
-                }else{
-                    resolve(reply);
-                }
-            });
-        });
+  async connect() { 
+    try {
+      await this.client.connect();
+      this.db = this.client.db(DB_DATABASE); // Use the imported variable
+      console.log('Connected to MongoDB');
+    } catch (err) {
+      console.error('MongoDB Connection Error:', err);
+      // You can potentially add retry logic or error handling here
     }
-    async del(key){
-        return new Promise((resolve, reject) => {
-            this.client.del(key, (error, reply) => {
-                if (error){
-                    reject(error);
-                }else{
-                    resolve(reply);
-                }
-            });
-        });
+  }
+
+  isAlive() {
+    return this.client.isConnected();
+  }
+
+  async nbUsers() {
+    if (!this.isAlive()) {
+      await this.connect(); // Ensure connection before querying
     }
+    return this.db.collection('users').countDocuments(); 
+  }
+
+  async nbFiles() {
+    if (!this.isAlive()) {
+      await this.connect();
+    }
+    return this.db.collection('files').countDocuments(); 
+  }
 }
-const redisClient = new RedisClient();
-export default redisClient;
+
+const dbClient = new DBClient();
+await dbClient.connect(); // Establish connection immediately
+export default dbClient;
