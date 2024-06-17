@@ -1,27 +1,13 @@
 const redis = require('redis');
 
-class RedisClient {
-  constructor() {
-    this.client = redis.createClient();
-  }
+const redisClient = redis.createClient();
 
-  isAlive() {
-    return this.client.connected;
-  }
+redisClient.on('connect', () => {
+  console.log('Redis client connected');
+});
 
-  async get(key) {
-    return this.client.get(key);
-  }
+redisClient.on('error', (err) => {
+  console.error('Redis client error:', err);
+});
 
-  async set(key, value, duration) {
-    this.client.set(key, value);
-    this.client.expire(key, duration);
-  }
-
-  async del(key) {
-    this.client.del(key);
-  }
-}
-
-const redisClient = new RedisClient();
-export default redisClient;
+module.exports = redisClient;
