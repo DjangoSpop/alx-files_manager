@@ -1,23 +1,26 @@
-const { Db } = require('mongodb');
-const redis = require('redis');
+import redisClient from '../utils/redis';
+import dbClient from '../utils/db';
 
 class AppController {
-  static getStatus(req, res) {
-    if (redis.isAlive()) {
-      res.status(200).send();
-    } else {
-      Db.isAlive((err, res) => {
-        if (err) {
-          res.status(500).send(err);
-        } else {
-          res.status(200).send({ users: 12, files: 1231 });
-        }
-      });
+  static async getStatus(req, res) {
+    try {
+      const redisAlive = await redisClient.isAlive();
+      const dbAlive = await dbClient.isAlive();
+      res.status(200).json({ redis: redisAlive, db: dbAlive });
+    } catch (err) {
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 
-  static getStats(req, res) {
-    res.status(200).send();
+  static async getStats(req, res) {
+    try {
+      const users = await dbClient.nbUsers();
+      const files = await dbClient.nbFiles();
+      res.status(200).json({ users, files });
+    } catch (err) {
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   }
 }
-module.exports = AppController;
+
+export default AppController;
